@@ -10,7 +10,7 @@ public sealed record Car : IEntityTypeConfiguration<Car>
     
     public Snowflake OwnerId { get; init; }
     
-    public DateOnly OwnedSince { get; init; }
+    public DateOnly? OwnedSince { get; init; }
     
     public int Year { get; init; }
 

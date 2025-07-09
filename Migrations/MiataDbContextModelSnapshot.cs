@@ -48,7 +48,7 @@ namespace MiataBot.Migrations
                         .HasColumnType("text")
                         .HasColumnName("model");
 
-                    b.Property<DateOnly>("OwnedSince")
+                    b.Property<DateOnly?>("OwnedSince")
                         .HasColumnType("date")
                         .HasColumnName("owned_since");
 

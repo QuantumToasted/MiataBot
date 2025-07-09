@@ -85,7 +85,7 @@ namespace MiataBot.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     owner_id = table.Column<long>(type: "bigint", nullable: false),
-                    owned_since = table.Column<DateOnly>(type: "date", nullable: false),
+                    owned_since = table.Column<DateOnly>(type: "date", nullable: true),
                     year = table.Column<int>(type: "integer", nullable: false),
                     make = table.Column<string>(type: "text", nullable: false),
                     model = table.Column<string>(type: "text", nullable: false),

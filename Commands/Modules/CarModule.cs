@@ -1,13 +1,30 @@
-﻿using Amazon.S3;
+﻿using System.Globalization;
+using System.Text;
+using Amazon.S3;
 using Amazon.S3.Model;
 using Disqord;
 using Disqord.Bot;
 using Disqord.Bot.Commands.Application;
+using Disqord.Rest;
 using Microsoft.EntityFrameworkCore;
 using Qmmands;
 using Qommon;
 
 namespace MiataBot;
+
+public enum CarUpdateField
+{
+    [ChoiceName("Purchase/acquisition date")]
+    OwnedSince,
+    [ChoiceName("Color")]
+    Color,
+    [ChoiceName("Nickname")]
+    PetName,
+    [ChoiceName("Blurb")]
+    Blurb,
+    [ChoiceName("VIN")]
+    VIN
+}
 
 [SlashGroup("car")]
 public sealed class CarModule(MiataDbContext db, AttachmentService attachments) : DiscordApplicationGuildModuleBase
@@ -88,12 +105,10 @@ public sealed class CarModule(MiataDbContext db, AttachmentService attachments) 
             Metadata = []
         };
 
-        LocalAttachment? overrideAttachment = null;
         if (mediaAttachment is not null)
         {
             var media = await attachments.GetAttachmentAsync(mediaAttachment);
             var newMedia = new CarMedia();
-            overrideAttachment = LocalAttachment.Bytes(media.Stream.ToArray(), media.FileName);
             await newMedia.UploadAsync(media);
             car.Media.Add(newMedia);
         }
@@ -106,6 +121,117 @@ public sealed class CarModule(MiataDbContext db, AttachmentService attachments) 
 
         var response = car.ToMessage<LocalInteractionMessageResponse>(Context.Author);
         return Response(response);
+    }
+
+    [SlashCommand("update")]
+    [Description("Updates information on one of your existing cars.")]
+    public async Task Update(
+        [Description("The car to update.")]
+        [RequireCarOwner]
+            Car car,
+        [Description("The data to update.")]
+            CarUpdateField data)
+    {
+        var customIdBuilder = new StringBuilder("CarInfo:Update:");
+        var modal = new LocalInteractionModalResponse()
+            .WithTitle("Updating your car");
+
+        switch (data)
+        {
+            case CarUpdateField.OwnedSince:
+            {
+                customIdBuilder.Append("OwnedSince:");
+                var ownedSince = car.OwnedSince ?? DateOnly.FromDateTime(DateTime.Now);
+                
+                var yearInput =
+                    LocalComponent.TextInput("year", "Year", TextInputComponentStyle.Short)
+                        .WithIsRequired()
+                        .WithMinimumInputLength(4)
+                        .WithMaximumInputLength(4)
+                        .WithPrefilledValue(ownedSince.Year.ToString())
+                        .InRow();
+                
+                var monthInput = 
+                    LocalComponent.TextInput("month", "Month", TextInputComponentStyle.Short)
+                        .WithIsRequired()
+                        .WithMinimumInputLength(3)
+                        .WithMaximumInputLength(10)
+                        .WithPrefilledValue(CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(ownedSince.Month))
+                        .InRow();
+                
+                var dayInput = 
+                    LocalComponent.TextInput("day", "Day", TextInputComponentStyle.Short)
+                        .WithIsRequired()
+                        .WithMinimumInputLength(1)
+                        .WithMaximumInputLength(2)
+                        .WithPrefilledValue(ownedSince.Day.ToString())
+                        .InRow();
+
+                modal.WithComponents(yearInput, monthInput, dayInput);
+                break;
+            }
+            case CarUpdateField.Color:
+            {
+                customIdBuilder.Append("Color:");
+                var colorInput = 
+                    LocalComponent.TextInput("color", "Color", TextInputComponentStyle.Short)
+                        .WithIsRequired()
+                        .WithMaximumInputLength(50)
+                        .WithPrefilledValue(car.Color)
+                        .InRow();
+                
+                modal.WithComponents(colorInput);
+                break;
+            }
+            case CarUpdateField.PetName:
+            {
+                customIdBuilder.Append("PetName:");
+                var nameInput =
+                    LocalComponent.TextInput("name", "Nickname", TextInputComponentStyle.Short)
+                        .WithIsRequired()
+                        .WithMaximumInputLength(50)
+                        .WithPlaceholder("Nickname or pet name...");
+
+                if (!string.IsNullOrWhiteSpace(car.PetName))
+                    nameInput.WithPrefilledValue(car.PetName);
+                
+                modal.WithComponents(nameInput.InRow());
+                break;
+            }
+            case CarUpdateField.Blurb:
+            {
+                customIdBuilder.Append("Blurb:");
+                var blurbInput =
+                    LocalComponent.TextInput("blurb", "Blurb", TextInputComponentStyle.Paragraph)
+                        .WithIsRequired()
+                        .WithMaximumInputLength(400)
+                        .WithPlaceholder("An interesting story or tidbit...");
+
+                if (!string.IsNullOrWhiteSpace(car.Blurb))
+                    blurbInput.WithPrefilledValue(car.Blurb);
+                
+                modal.WithComponents(blurbInput.InRow());
+                break;
+            }
+            case CarUpdateField.VIN:
+            {
+                customIdBuilder.Append("VIN:");
+                var vinInput = 
+                    LocalComponent.TextInput("vin", "VIN", TextInputComponentStyle.Short)
+                        .WithIsRequired()
+                        .WithMinimumInputLength(17)
+                        .WithMaximumInputLength(17)
+                        .WithPrefilledValue(car.VIN ?? "4DUMMYV1N1SNTRE4L")
+                        .InRow();
+                
+                modal.WithComponents(vinInput);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(data), data, null);
+        }
+
+        await Context.Interaction.Response().SendModalAsync(modal.WithCustomId(customIdBuilder.Append(car.Id).ToString()));
     }
 
     [AutoComplete("add")]
@@ -133,6 +259,7 @@ public sealed class CarModule(MiataDbContext db, AttachmentService attachments) 
     }
 
     [AutoComplete("info")]
+    [AutoComplete("update")]
     public async Task AutoCompleteCars(AutoComplete<string> car)
     {
         if (!car.IsFocused)

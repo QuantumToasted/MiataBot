@@ -107,8 +107,18 @@ public static class DbModelExtensions
             headerContentBuilder.Append($" — \"{car.PetName}\"");
         
         headerContentBuilder.AppendNewline()
-            .AppendNewline($"{Markdown.Bold("Color:")} {car.Color}")
-            .AppendJoin("\n", car.Metadata.Select(x => x.Format()));
+            .AppendNewline($"{Markdown.Bold("Color:")} {car.Color}");
+
+        if (car.OwnedSince.HasValue)
+        {
+            var ownedSince = new DateTimeOffset(car.OwnedSince.Value.ToDateTime(TimeOnly.MinValue));
+            headerContentBuilder.AppendNewline($"{Markdown.Bold("Owned since:")} {Markdown.Timestamp(ownedSince, Markdown.TimestampFormat.ShortDate)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(car.VIN))
+            headerContentBuilder.AppendNewline($"{Markdown.Bold("VIN:")} {car.VIN}");
+        
+        headerContentBuilder.AppendJoin("\n", car.Metadata.Select(x => x.Format()));
         
         var headerSection = LocalComponent.Section(
             LocalComponent.Thumbnail(owner.GetGuildAvatarUrl()), LocalComponent.TextDisplay(headerContentBuilder.ToString()));

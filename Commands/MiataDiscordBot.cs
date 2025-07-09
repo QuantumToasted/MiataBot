@@ -18,6 +18,7 @@ public sealed class MiataDiscordBot(
     protected override ValueTask AddTypeParsers(DefaultTypeParserProvider typeParserProvider, CancellationToken cancellationToken)
     {
         typeParserProvider.AddParser(new CarTypeParser());
+        typeParserProvider.AddParser(new GuidTypeParser());
         return base.AddTypeParsers(typeParserProvider, cancellationToken);
     }
     

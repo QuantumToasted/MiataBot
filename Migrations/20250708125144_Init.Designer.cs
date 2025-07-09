@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MiataBot.Migrations
 {
     [DbContext(typeof(MiataDbContext))]
-    [Migration("20250707073133_Init")]
+    [Migration("20250708125144_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -51,7 +51,7 @@ namespace MiataBot.Migrations
                         .HasColumnType("text")
                         .HasColumnName("model");
 
-                    b.Property<DateOnly>("OwnedSince")
+                    b.Property<DateOnly?>("OwnedSince")
                         .HasColumnType("date")
                         .HasColumnName("owned_since");
 
